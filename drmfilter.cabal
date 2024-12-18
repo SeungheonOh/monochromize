@@ -1,0 +1,31 @@
+cabal-version:      3.0
+name:               drmfilter
+version:            0.1.0.0
+-- synopsis:
+-- description:
+license:            BSD-3-Clause
+license-file:       LICENSE
+author:             Seungheon Oh
+maintainer:         me@sh5.org
+-- copyright:
+build-type:         Simple
+extra-doc-files:    CHANGELOG.md
+-- extra-source-files:
+
+common warnings
+    ghc-options: -Wall
+
+executable drmfilter
+    import:           warnings
+    main-is:          Main.hs
+    -- other-modules:
+    -- other-extensions:
+    build-depends:
+             , base
+             , unix
+    hs-source-dirs:   app
+    default-language: Haskell2010
+    includes:         cbits/drm.h
+    install-includes: cbits/drm.h
+    c-sources: cbits/drm.c cbits/drm.h
+    pkgconfig-depends: libdrm
