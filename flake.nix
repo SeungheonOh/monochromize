@@ -1,5 +1,5 @@
 {
-  description = "drmfilter";
+  description = "monochromize";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs";
@@ -8,10 +8,24 @@
     haskell-nix.url = "github:input-output-hk/haskell.nix";
   };
 
-  outputs = inputs@{ flake-parts, nixpkgs, haskell-nix, ... }:
+  outputs = inputs@{ self, flake-parts, nixpkgs, haskell-nix, ... }:
     flake-parts.lib.mkFlake { inherit inputs; } {
+      imports = [
+        inputs.flake-parts.flakeModules.easyOverlay
+      ];
+
       debug = true;
       systems = [ "x86_64-linux" "aarch64-darwin" "x86_64-darwin" "aarch64-linux" ];
+
+      flake = {
+        nixosModules.default = { ... }: {
+          imports = [
+            { nixpkgs.overlays = [ self.overlays.default ]; }
+            ./nix/nixos-module.nix
+          ];
+        };
+      };
+
 
       perSystem = { config, system, lib, self', ... }:
         let
@@ -25,8 +39,7 @@
             };
           project = pkgs.haskell-nix.cabalProject' {
             src = ./.;
-            compiler-nix-name = "ghc966"; # << idk what version of ghc kubernetes-client supports
-            index-state = "2024-10-09T22:38:57Z";
+            compiler-nix-name = "ghc966";
             shell = {
               withHoogle = true;
               withHaddock = true;
@@ -38,7 +51,9 @@
         in
         {
           inherit (flake) devShells;
-          packages = flake.packages // {
+          packages = flake.packages // {};
+          overlayAttrs = {
+            monochromize = config.packages."monochromize:exe:monochromize";
           };
 
           inherit (flake) checks;

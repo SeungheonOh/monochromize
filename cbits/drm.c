@@ -4,16 +4,24 @@
 #define FIXED_POINT_SCALE (1LL << 32)  // 2^32
 
 int64_t f2fp(float value) {
-    // Scale the floating-point value by 2^fractional_bits
-    double scaled_value = value * (1LL << 32);
+  // Scale the floating-point value by 2^fractional_bits
+  double scaled_value = value * (1LL << 32);
 
-    // Round to the nearest integer
-    int64_t fixed_value = (int64_t)round(scaled_value);
+  // Round to the nearest integer
+  int64_t fixed_value = (int64_t)round(scaled_value);
 
-    // Return the fixed-point value
-    return fixed_value;
+  // Return the fixed-point value
+  return fixed_value;
 }
 
+bool is_drm_avail(int drm_fd) {
+  if (drmSetMaster(drm_fd) == 0) {
+    drmDropMaster(drm_fd);
+    return true;
+  } else {
+    return false;
+  }
+}
 
 void set_ctm(int drm_fd, uint32_t crtc_id, float *ctm_matrixf) {
   drmModeObjectProperties *props = drmModeObjectGetProperties(drm_fd, crtc_id, DRM_MODE_OBJECT_CRTC);

@@ -1,4 +1,4 @@
-# Revision history for drmfilter
+# Revision history for monochromize
 
 ## 0.1.0.0 -- YYYY-mm-dd
 

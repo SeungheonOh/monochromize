@@ -2,7 +2,6 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
 
 module Main where
 
@@ -30,6 +29,13 @@ requestVTWAITACTIVE = 0x5607
 
 foreign import ccall "set_ctm" c_setCTM :: CInt -> CUInt -> Ptr CFloat -> IO ()
 foreign import ccall "find_crtc" c_findCRTC :: CInt -> IO CUInt
+foreign import ccall "is_drm_avail" c_isDrmAvail :: CInt -> IO CBool
+
+isDrmAvail :: Fd -> IO Bool
+isDrmAvail (Fd fd) = do
+  (CBool cb) <- c_isDrmAvail fd
+
+  return $ cb /= 0
 
 setCTM :: Fd -> CUInt -> CTM -> IO ()
 setCTM (Fd fd) crtc CTM{..} = do
@@ -152,17 +158,31 @@ temp t' =
       0 (g / 255) 0
       0 0 (b / 255)
 
-main :: IO ()
-main = do
-  fd <- openFd "/dev/console" ReadWrite Nothing defaultFileFlags
+drmDevice :: String
+drmDevice = "/dev/dri/card1"
 
-  currentVT <- getCurrentVT fd
+withDrm :: IO a -> IO a
+withDrm act = do
+  drmFd <- openFd drmDevice ReadWrite defaultFileFlags
+  avail <- isDrmAvail drmFd
+  closeFd drmFd
 
-  setCurrentVT fd 3
+  if avail
+  then act
+  else do
+    fd <- openFd "/dev/console" ReadWrite defaultFileFlags
+    currentVT <- getCurrentVT fd
+    setCurrentVT fd 3
+    res <- act
+    setCurrentVT fd (fromIntegral $ vActive currentVT)
+    closeFd fd
 
-  drmFd <- openFd "/dev/dri/card1" ReadWrite Nothing defaultFileFlags
+    pure res
+
+changeCTM :: IO ()
+changeCTM = do
+  drmFd <- openFd drmDevice ReadWrite defaultFileFlags
   crtc <- findCRTC drmFd
-  print crtc
 
   let
     bwCtm = CTM 0.299 0.299 0.299 0.587 0.587 0.587 0.114 0.114 0.114
@@ -170,7 +190,7 @@ main = do
     ctm = bwCtm `ctmMult` temp 2500 `ctmMult` br
 
   setCTM drmFd crtc ctm
-  setCurrentVT fd (fromIntegral $ vActive currentVT)
-
-  closeFd fd
   closeFd drmFd
+
+main :: IO ()
+main = withDrm changeCTM
